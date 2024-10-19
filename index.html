@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>chain ttimer</title>
+    <title>chain timer</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -100,7 +100,6 @@
         let animationFrameId = null;
         let wakeLock = null;
 
-        // Wake Lock 지원 여부 확인
         if ('wakeLock' in navigator) {
             document.getElementById('wakeLockStatus').textContent = '';
         } else {
@@ -159,15 +158,17 @@
         async function startTimers() {
             if (timers.length === 0) return;
             if (!isRunning) {
-                currentTimerIndex = 0;
-                elapsedTime = 0;
+                if (currentTimerIndex >= timers.length) {
+                    currentTimerIndex = 0;
+                    elapsedTime = 0;
+                }
                 isRunning = true;
                 lastTimestamp = performance.now();
                 document.getElementById('startButton').disabled = true;
                 document.getElementById('stopButton').disabled = false;
                 document.getElementById('resetButton').disabled = false;
                 requestAnimationFrame(updateTimer);
-                await requestWakeLock(); // Wake Lock 요청
+                await requestWakeLock();
             }
         }
 
@@ -179,8 +180,8 @@
 
             elapsedTime += deltaTime / 1000;
             
-            if (elapsedTime >= timers[currentTimerIndex]) {
-                elapsedTime = 0;
+            while (elapsedTime >= timers[currentTimerIndex]) {
+                elapsedTime -= timers[currentTimerIndex];
                 currentTimerIndex++;
                 if (currentTimerIndex >= timers.length) {
                     alert("모든 타이머가 종료되었습니다!");
@@ -198,7 +199,8 @@
             cancelAnimationFrame(animationFrameId);
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
-            releaseWakeLock(); // Wake Lock 해제
+            releaseWakeLock();
+            lastTimestamp = performance.now();
         }
 
         function resetTimers() {
@@ -209,8 +211,8 @@
             updateTimerDisplay();
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
-            document.getElementById('resetButton').disabled = true;
-            releaseWakeLock(); // Wake Lock 해제
+document.getElementById('resetButton').disabled = true;
+            releaseWakeLock();
         }
 
         function updateTimerDisplay() {
