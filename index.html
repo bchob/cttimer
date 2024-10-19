@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>chain ttimer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        #timerSVG {
+            width: 300px;
+            height: 300px;
+            margin: 0 auto 20px;
+        }
+        #currentTimerText {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        ul {
+            list-style-type: none;
+            padding: 0;
+            text-align: left;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 20px;
+        }
+        li {
+            margin-bottom: 5px;
+        }
+        button {
+            background-color: #007bff;
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            text-decoration: none;
+            display: inline-block;
+            font-size: 16px;
+            margin: 4px 2px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:disabled {
+            background-color: #cccccc;
+            cursor: not-allowed;
+        }
+        input {
+            width: 50px;
+            margin-right: 5px;
+            padding: 5px;
+        }
+        .input-container {
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <svg id="timerSVG" viewBox="0 0 100 100">
+            <path id="timerPath" d="" fill="#007bff" />
+            <text id="timerText" x="50" y="55" text-anchor="middle" font-size="12">00:00:00</text>
+        </svg>
+        <div id="currentTimerText">00:00:00</div>
+        <div class="input-container">
+            <input type="number" id="hours" min="0" max="23" placeholder="시">
+            <input type="number" id="minutes" min="0" max="59" placeholder="분">
+            <input type="number" id="seconds" min="0" max="59" placeholder="초">
+            <button onclick="addTimer()">타이머 추가</button>
+        </div>
+        <ul id="timerList"></ul>
+        <div>
+            <button id="startButton" onclick="startTimers()">시작</button>
+            <button id="stopButton" onclick="stopTimer()" disabled>정지</button>
+            <button id="resetButton" onclick="resetTimers()" disabled>리셋</button>
+        </div>
+        <div id="wakeLockStatus"></div>
+    </div>
+
+    <script>
+        let timers = [];
+        let currentTimerIndex = 0;
+        let isRunning = false;
+        let elapsedTime = 0;
+        let lastTimestamp = 0;
+        let animationFrameId = null;
+        let wakeLock = null;
+
+        // Wake Lock 지원 여부 확인
+        if ('wakeLock' in navigator) {
+            document.getElementById('wakeLockStatus').textContent = '';
+        } else {
+            document.getElementById('wakeLockStatus').textContent = '';
+        }
+
+        async function requestWakeLock() {
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    document.getElementById('wakeLockStatus').textContent = '';
+                } catch (err) {
+                    console.error(`${err.name}, ${err.message}`);
+                    document.getElementById('wakeLockStatus').textContent = '';
+                }
+            }
+        }
+
+        function releaseWakeLock() {
+            if (wakeLock) {
+                wakeLock.release()
+                    .then(() => {
+                        wakeLock = null;
+                        document.getElementById('wakeLockStatus').textContent = '화면 켜짐 유지 기능이 비활성화되었습니다.';
+                    });
+            }
+        }
+
+        function addTimer() {
+            const hours = parseInt(document.getElementById('hours').value) || 0;
+            const minutes = parseInt(document.getElementById('minutes').value) || 0;
+            const seconds = parseInt(document.getElementById('seconds').value) || 0;
+            const totalSeconds = hours * 3600 + minutes * 60 + seconds;
+            
+            if (totalSeconds > 0) {
+                timers.push(totalSeconds);
+                updateTimerList();
+                document.getElementById('hours').value = '';
+                document.getElementById('minutes').value = '';
+                document.getElementById('seconds').value = '';
+            } else {
+                alert('유효한 시간을 입력해주세요.');
+            }
+        }
+
+        function updateTimerList() {
+            const timerList = document.getElementById("timerList");
+            timerList.innerHTML = "";
+            timers.forEach((timer, index) => {
+                const li = document.createElement("li");
+                li.textContent = `타이머 ${index + 1}: ${formatTime(timer)}`;
+                timerList.appendChild(li);
+            });
+        }
+
+        async function startTimers() {
+            if (timers.length === 0) return;
+            if (!isRunning) {
+                currentTimerIndex = 0;
+                elapsedTime = 0;
+                isRunning = true;
+                lastTimestamp = performance.now();
+                document.getElementById('startButton').disabled = true;
+                document.getElementById('stopButton').disabled = false;
+                document.getElementById('resetButton').disabled = false;
+                requestAnimationFrame(updateTimer);
+                await requestWakeLock(); // Wake Lock 요청
+            }
+        }
+
+        function updateTimer(timestamp) {
+            if (!isRunning) return;
+
+            const deltaTime = timestamp - lastTimestamp;
+            lastTimestamp = timestamp;
+
+            elapsedTime += deltaTime / 1000;
+            
+            if (elapsedTime >= timers[currentTimerIndex]) {
+                elapsedTime = 0;
+                currentTimerIndex++;
+                if (currentTimerIndex >= timers.length) {
+                    alert("모든 타이머가 종료되었습니다!");
+                    resetTimers();
+                    return;
+                }
+            }
+
+            updateTimerDisplay();
+            animationFrameId = requestAnimationFrame(updateTimer);
+        }
+
+        function stopTimer() {
+            isRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            releaseWakeLock(); // Wake Lock 해제
+        }
+
+        function resetTimers() {
+            isRunning = false;
+            cancelAnimationFrame(animationFrameId);
+            currentTimerIndex = 0;
+            elapsedTime = 0;
+            updateTimerDisplay();
+            document.getElementById('startButton').disabled = false;
+            document.getElementById('stopButton').disabled = true;
+            document.getElementById('resetButton').disabled = true;
+            releaseWakeLock(); // Wake Lock 해제
+        }
+
+        function updateTimerDisplay() {
+            const currentTimerText = document.getElementById('currentTimerText');
+            const timerText = document.getElementById('timerText');
+            const currentTimer = timers[currentTimerIndex];
+            const remainingTime = currentTimer - elapsedTime;
+            currentTimerText.textContent = formatTime(Math.max(0, Math.ceil(remainingTime)));
+            timerText.textContent = formatTime(Math.max(0, Math.ceil(remainingTime)));
+
+            const progress = elapsedTime / currentTimer;
+            const angle = progress * 360;
+            const x = 50 + 45 * Math.sin(angle * Math.PI / 180);
+            const y = 50 - 45 * Math.cos(angle * Math.PI / 180);
+            const largeArcFlag = angle > 180 ? 1 : 0;
+            
+            const timerPath = document.getElementById('timerPath');
+            timerPath.setAttribute('d', `M50,50 L50,5 A45,45 0 ${largeArcFlag},1 ${x},${y} Z`);
+        }
+
+        function formatTime(seconds) {
+            const hours = Math.floor(seconds / 3600);
+            const minutes = Math.floor((seconds % 3600) / 60);
+            const secs = Math.floor(seconds % 60);
+            return `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 페이지 가시성 변경 이벤트 리스너 추가
+        document.addEventListener('visibilitychange', async () => {
+            if (wakeLock !== null && document.visibilityState === 'visible') {
+                await requestWakeLock();
+            }
+        });
+    </script>
+</body>
+</html>
