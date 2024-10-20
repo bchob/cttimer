@@ -25,7 +25,23 @@
             width: 400px;
             height: 400px;
             margin: 0 auto 20px;
+          
         }
+        #timerBackground {
+            fill: #007bff;
+            border: none;
+        }
+        #timerPath {
+            fill: white;
+        }
+        #timerText {
+            fill: #007bff;
+            font-size: 20px;
+            font-weight: bold;
+        }
+      #timerText {
+    display: none;
+}
         #currentTimerText {
             font-size: 24px;
             font-weight: bold;
@@ -72,8 +88,9 @@
 <body>
     <div class="container">
         <svg id="timerSVG" viewBox="0 0 100 100">
-            <path id="timerPath" d="" fill="#007bff" />
-            <text id="timerText" x="50" y="55" text-anchor="middle" font-size="0">00:00:00</text>
+            <circle id="timerBackground" cx="50" cy="50" r="44" />
+            <path id="timerPath" d="M50,50 L50,5 A45,45 0 0,1 50,5 Z" />
+            <text id="timerText" x="50" y="55" text-anchor="middle" font-size:0px;>00:00:00</text>
         </svg>
         <div id="currentTimerText">00:00:00</div>
         <div class="input-container">
@@ -211,7 +228,7 @@
             updateTimerDisplay();
             document.getElementById('startButton').disabled = false;
             document.getElementById('stopButton').disabled = true;
-document.getElementById('resetButton').disabled = true;
+            document.getElementById('resetButton').disabled = true;
             releaseWakeLock();
         }
 
