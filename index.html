@@ -20,11 +20,18 @@
             border-radius: 10px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
             text-align: center;
+            display: grid;
+            grid-template-rows: auto auto auto auto 1fr auto;
+            max-height: 90vh;
+            gap: 10px;
+            width: 100%;
+            max-width: 500px;
         }
         #timerSVG {
-            width: 400px;
-            height: 400px;
-            margin: 0 auto 20px;
+            width: 300px;
+            height: 300px;
+            margin: 0 auto;
+            min-height: 200px;
         }
         #timerBackground {
             fill: #007bff;
@@ -42,23 +49,32 @@
         #currentTimerText {
             font-size: 24px;
             font-weight: bold;
-            margin-bottom: 10px;
         }
         #currentTimerIndex {
             font-size: 18px;
-            margin-bottom: 10px;
             color: #007bff;
+        }
+        .timer-list-container {
+            overflow-y: auto;
+            max-height: 200px;
+            margin: 10px 0;
+            border: 1px solid #eee;
+            border-radius: 5px;
+            padding: 10px;
         }
         ul {
             list-style-type: none;
             padding: 0;
             text-align: left;
-            max-height: 150px;
-            overflow-y: auto;
-            margin-bottom: 20px;
+            margin: 0;
         }
         li {
-            margin-bottom: 5px;
+            margin-bottom: 8px;
+            padding: 8px;
+            border-bottom: 1px solid #eee;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            font-size: 16px;
         }
         button {
             background-color: #007bff;
@@ -83,7 +99,28 @@
             padding: 5px;
         }
         .input-container {
-            margin-bottom: 15px;
+            margin: 10px 0;
+        }
+        .controls-container {
+            margin-top: 10px;
+        }
+        /* 타이머 리스트 스타일 강화 */
+        #timerList {
+            font-size: 16px;
+            line-height: 1.5;
+        }
+        #timerList li {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .timer-number {
+            font-weight: bold;
+            color: #007bff;
+            margin-right: 10px;
+        }
+        .timer-duration {
+            color: #495057;
         }
     </style>
 </head>
@@ -102,8 +139,10 @@
             <input type="number" id="seconds" min="0" max="59" placeholder="초">
             <button onclick="addTimer()">타이머 추가</button>
         </div>
-        <ul id="timerList"></ul>
-        <div>
+        <div class="timer-list-container">
+            <ul id="timerList"></ul>
+        </div>
+        <div class="controls-container">
             <button id="startButton" onclick="startTimers()">시작</button>
             <button id="stopButton" onclick="stopTimer()" disabled>정지</button>
             <button id="resetButton" onclick="resetTimers()" disabled>리셋</button>
@@ -112,6 +151,7 @@
     </div>
 
     <script>
+        // 기존 JavaScript 코드는 동일하게 유지
         let timers = [];
         let currentTimerIndex = 0;
         let isRunning = false;
@@ -171,7 +211,16 @@
             timerList.innerHTML = "";
             timers.forEach((timer, index) => {
                 const li = document.createElement("li");
-                li.textContent = `타이머 ${index + 1}: ${formatTime(timer)}`;
+                const timerNumber = document.createElement("span");
+                timerNumber.className = "timer-number";
+                timerNumber.textContent = `타이머 ${index + 1}`;
+                
+                const timerDuration = document.createElement("span");
+                timerDuration.className = "timer-duration";
+                timerDuration.textContent = formatTime(timer);
+                
+                li.appendChild(timerNumber);
+                li.appendChild(timerDuration);
                 timerList.appendChild(li);
             });
         }
@@ -269,7 +318,6 @@
             currentTimerIndexElement.textContent = `현재 타이머: ${currentTimerIndex + 1} / ${timers.length}`;
         }
 
-        // 페이지 가시성 변경 이벤트 리스너 추가
         document.addEventListener('visibilitychange', async () => {
             if (wakeLock !== null && document.visibilityState === 'visible') {
                 await requestWakeLock();
